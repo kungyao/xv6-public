@@ -1,3 +1,4 @@
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
@@ -21,6 +22,11 @@ struct inode {
   short major;
   short minor;
   short nlink;
+  
+  short ownerid;      // The ID of the user who owns the file.
+  short groupid;      // The ID of the group who owns the file.
+  uint permission;         // The files mode e.g. 0700
+  
   uint size;
   uint addrs[NDIRECT+1];
 };

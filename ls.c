@@ -1,7 +1,11 @@
+
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+
+int uid;
+char * username;
 
 char*
 fmtname(char *path)
@@ -22,6 +26,47 @@ fmtname(char *path)
   return buf;
 }
 
+void printPermission(struct stat st)
+{
+	if(st.permission & 0x100)
+		printf(1,"r");
+	else
+		printf(1,"-");
+	if(st.permission & 0x80)
+		printf(1,"w");
+	else
+		printf(1,"-");
+	if(st.permission & 0x40)
+		printf(1,"x");
+	else
+		printf(1,"-");
+	if(st.permission & 0x20)
+		printf(1,"r");
+	else
+		printf(1,"-");
+	if(st.permission & 0x10)
+		printf(1,"w");
+	else
+		printf(1,"-");
+	if(st.permission & 0x8)
+		printf(1,"x");
+	else
+		printf(1,"-");
+	if(st.permission & 0x4)
+		printf(1,"r");
+	else
+		printf(1,"-");
+	if(st.permission & 0x2)
+		printf(1,"w");
+	else
+		printf(1,"-");
+	if(st.permission & 0x1)
+		printf(1,"x");
+	else
+		printf(1,"-");
+	
+}
+
 void
 ls(char *path)
 {
@@ -29,7 +74,6 @@ ls(char *path)
   int fd;
   struct dirent de;
   struct stat st;
-
   if((fd = open(path, 0)) < 0){
     printf(2, "ls: cannot open %s\n", path);
     return;
@@ -42,29 +86,51 @@ ls(char *path)
   }
 
   switch(st.type){
-  case T_FILE:
-    printf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
+   case T_FILE:
+    //printf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
+	if(stat(path, &st) < 0){
+        	printf(1, "ls: cannot stat %s\n", path);
+    	}
+	
+	//only show the file which user can use 
+	if(st.ownerid != uid && 0 != uid) {
+		printf(1,"No file\n");
+		break;
+	}
+	printf(1, "%s %d %d %d ", fmtname(path), st.type, st.ownerid, st.groupid);  
+	//將st.permission的二進位轉成 rwxrw-r--顯示
+	printPermission(st);
+	printf(1, " %d %d\n", st.ino, st.size);
     break;
 
-  case T_DIR:
-    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
-      printf(1, "ls: path too long\n");
-      break;
-    }
-    strcpy(buf, path);
-    p = buf+strlen(buf);
-    *p++ = '/';
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      if(de.inum == 0)
-        continue;
-      memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
-      if(stat(buf, &st) < 0){
-        printf(1, "ls: cannot stat %s\n", buf);
-        continue;
-      }
-      printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
-    }
+   case T_DIR:
+	if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
+		printf(1, "ls: path too long\n");
+		break;
+	}
+	strcpy(buf, path);
+	p = buf+strlen(buf);
+	*p++ = '/';
+        int flag = 1;
+	while(read(fd, &de, sizeof(de)) == sizeof(de)){
+		if(de.inum == 0) continue;
+		memmove(p, de.name, DIRSIZ);
+		p[DIRSIZ] = 0;
+		if(stat(buf, &st) < 0){
+			printf(1, "ls: cannot stat %s\n", buf);
+			continue;
+		}
+		//only show the file which user can use
+		int permission  = st.permission;
+		if(st.ownerid != uid && 0 != uid && !(0x1&permission) && !(0x2&permission) && !(0x4&permission)) continue;
+		flag = 0;
+		printf(1, "%s %d %d %d ", fmtname(buf), st.type, st.ownerid, st.groupid);  
+		//將st.permission的二進位轉成 rwxrw-r--顯示
+		printPermission(st);
+		printf(1, " %d %d\n", st.ino, st.size);
+	}
+	if(flag==1)
+		printf(1,"No file\n");
     break;
   }
   close(fd);
@@ -74,12 +140,15 @@ int
 main(int argc, char *argv[])
 {
   int i;
-
-  if(argc < 2){
+  //printf(1,"%d\n",argc);
+  uid = atoi(argv[argc-3]);
+	printf(1,"%d\n",uid);
+  username = argv[argc-1];
+  if(argc < 5){
     ls(".");
     exit();
   }
-  for(i=1; i<argc; i++)
+  for(i=1; i<argc-3; i++)
     ls(argv[i]);
   exit();
 }

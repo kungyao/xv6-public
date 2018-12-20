@@ -16,13 +16,18 @@ int mknod(const char*, short, short);
 int unlink(const char*);
 int fstat(int fd, struct stat*);
 int link(const char*, const char*);
-int mkdir(const char*);
+int mkdir(const char*);	
 int chdir(const char*);
 int dup(int);
 int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+//add syscall
+int chmod(char *, int);
+int chown(char *, int);
+int chgrp(char *, int);
+int adduser(int, char*);
 
 // ulib.c
 int stat(const char*, struct stat*);

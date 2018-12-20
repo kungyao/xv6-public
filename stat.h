@@ -1,3 +1,4 @@
+
 #define T_DIR  1   // Directory
 #define T_FILE 2   // File
 #define T_DEV  3   // Device
@@ -8,4 +9,9 @@ struct stat {
   uint ino;    // Inode number
   short nlink; // Number of links to file
   uint size;   // Size of file in bytes
+  
+  short ownerid;//The owner of the file
+  short groupid; //The group of the file
+  uint permission; // The permission of the file
+  
 };

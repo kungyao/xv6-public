@@ -1,7 +1,7 @@
 // Shell.
-
 #include "types.h"
 #include "user.h"
+#include "stat.h"
 #include "fcntl.h"
 
 // Parsed command representation
@@ -12,6 +12,10 @@
 #define BACK  5
 
 #define MAXARGS 10
+
+char * username;
+char * uid;
+char * groupid;
 
 struct cmd {
   int type;
@@ -63,7 +67,8 @@ runcmd(struct cmd *cmd)
   struct listcmd *lcmd;
   struct pipecmd *pcmd;
   struct redircmd *rcmd;
-
+  int fd =0;
+  struct stat st;
   if(cmd == 0)
     exit();
 
@@ -72,9 +77,48 @@ runcmd(struct cmd *cmd)
     panic("runcmd");
 
   case EXEC:
+    //printf(1,"123\n");
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
+    //exec(ecmd->argv[0], ecmd->argv);
+    //printf(1,"%s",ecmd->argv[0]);
+    if((fd = open(ecmd->argv[0], 0)) < 0){
+	printf(2, "exec %s failed\n", ecmd->argv[0]);
+	close(fd);
+	exit();
+    }
+    if(fstat(fd, &st) < 0){
+	printf(2, "%s: cannot exec1\n",ecmd->argv[0]);
+	close(fd);
+	exit();
+    }
+
+    if(0 != atoi(uid) && st.ownerid != atoi(uid) && st.groupid != atoi(groupid)){
+	    if(!(st.permission&0x4)){
+		printf(2, "%s: cannot exec\n",ecmd->argv[0]);
+		close(fd);
+		exit();
+	    }
+	    else if(!(st.permission&0x2)){
+		printf(2, "%s: cannot exec\n",ecmd->argv[0]);
+		close(fd);
+		exit();
+	    }
+	    else if(!(st.permission&0x1)){
+		printf(2, "%s: cannot exec\n",ecmd->argv[0]);
+		close(fd);
+		exit();
+	    }
+    }
+    int j = 0;
+    for(int i = 0;ecmd->argv[i];i++)
+	j++;
+    
+    ecmd->argv[j] = uid;
+    ecmd->argv[j+1] = groupid;
+    ecmd->argv[j+2] = username;
+    //printf(1,"2s %s", ecmd->argv[j],ecmd->argv[j+1]);
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -133,7 +177,7 @@ runcmd(struct cmd *cmd)
 int
 getcmd(char *buf, int nbuf)
 {
-  printf(2, "$ ");
+  printf(2, "OS : $ ");
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
@@ -142,11 +186,13 @@ getcmd(char *buf, int nbuf)
 }
 
 int
-main(void)
+main(int argc, char * argv[])
 {
+  uid = argv[0];
+  username = argv[1];
+  groupid = argv[2];
   static char buf[100];
   int fd;
-
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
@@ -154,7 +200,6 @@ main(void)
       break;
     }
   }
-
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
@@ -164,8 +209,24 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    if(fork1() == 0)
-      runcmd(parsecmd(buf));
+    else if(buf[0] == 'l' && buf[1] == 'o' && buf[2] == 'g'&&buf[3] == 'o' && buf[4] == 'u' && buf[5] == 't'){
+      exit();
+    }
+    if(fork1() == 0){
+      if (buf[0] == '\n'){
+        runcmd(parsecmd(buf));
+      }
+      else{
+        char p[sizeof(buf)+1];
+        p[0] = '/';
+        int i = 0;
+        while(buf[i]!='\0'){
+          p[i+1] = buf[i];
+          i++;
+        }
+        runcmd(parsecmd(p));
+      }
+    }
     wait();
   }
   exit();

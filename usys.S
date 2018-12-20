@@ -29,3 +29,8 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+
+SYSCALL(chmod)
+SYSCALL(chown)
+SYSCALL(chgrp)
+SYSCALL(adduser)

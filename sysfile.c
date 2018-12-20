@@ -1,9 +1,9 @@
+
 //
 // File-system system calls.
 // Mostly argument checking, since we don't trust
 // user code, and calls into file.c and fs.c.
 //
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -442,4 +442,61 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int sys_chmod(void) {
+    char *path;
+    int permission;
+    struct inode *ip;
+    if(argstr(0, &path) < 0 || argint(1, &permission) < 0)
+        return -1;
+    begin_op();
+    if((ip = namei(path)) == 0) {
+        end_op();
+        return -1;
+    }
+    ilock(ip);
+    ip->permission = permission;
+    iupdate(ip); // Copy to disk
+    iunlockput(ip);
+    end_op();
+    return 0;
+}
+
+int sys_chown(void) {
+    char *path;
+    int owner;
+    struct inode *ip;
+    if(argstr(0, &path) < 0 || argint(1, &owner) < 0)
+        return -1;
+    begin_op();
+    if((ip = namei(path)) == 0) {
+        end_op();
+        return -1;
+    }
+    ilock(ip);
+    ip->ownerid = (short)owner;
+    iupdate(ip); // Copy to disk
+    iunlockput(ip);
+    end_op();
+    return 0;
+}
+
+int sys_chgrp(void) {
+    char *path;
+    int group;
+    struct inode *ip;
+    if(argstr(0, &path) < 0 || argint(1, &group) < 0)
+        return -1;
+    begin_op();
+    if((ip = namei(path)) == 0) {
+        end_op();
+        return -1;
+    }
+    ilock(ip);
+    ip->groupid = (short)group;
+    iupdate(ip); // Copy to disk
+    iunlockput(ip);
+    end_op();
+    return 0;
 }
